@@ -1,0 +1,15 @@
+dimension_type,dimension_value,index_value,period,source
+age_group,18-24,-1,Q1 2026,Ромир
+age_group,25-34,-5,Q1 2026,Ромир
+age_group,35-44,-9,Q1 2026,Ромир
+age_group,45-59,-10,Q1 2026,Ромир
+age_group,60+,3,Q1 2026,Ромир
+household_size,1,-13,Q1 2026,Ромир
+household_size,2,-2,Q1 2026,Ромир
+household_size,3,-13,Q1 2026,Ромир
+household_size,4,-1,Q1 2026,Ромир
+household_size,5,8,Q1 2026,Ромир
+household_size,6,27,Q1 2026,Ромир
+household_size,7,32,Q1 2026,Ромир
+household_size,8+,35,Q1 2026,Ромир
+overall,Россия,-4,Q1 2026,Ромир
