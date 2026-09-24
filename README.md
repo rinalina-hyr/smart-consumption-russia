@@ -69,7 +69,6 @@
 ├── sql/
 │ └── queries.sql аналитические SQL-запросы
 ├── visualizations/ графики (png)
-├── dashboard/ дашборд Power BI
 ├── hypotheses.md гипотезы, метод, результаты
 ├── literature_review.md обзор литературы
 └── README.md
@@ -95,7 +94,6 @@
 
 - R: `DBI`, `RSQLite`, `dplyr`, `tidyr`, `ggplot2`,
   `here`, `forcats`, `stringr`.
-- Python: `pandas`, `matplotlib`.
 
 ## Источники данных
 
