@@ -1,7 +1,7 @@
 -- ============================================================
 -- Аналитические SQL-запросы
 -- Проект: Умное потребление в России
--- База: data/smart_consumption.db (SQLite, 24 таблицы)
+-- База: data/smart_consumption.db (SQLite, 30 таблиц)
 -- ============================================================
 
 
@@ -82,12 +82,25 @@ ORDER BY growth_pct_apr_may_2026 DESC;
 SELECT
     wave,
     нет_сбережений_нет_кредитов_pct AS no_savings_pct,
-    LAG(нет_сбережений_нет_кредитов_pct) OVER (ORDER BY wave)
+    LAG(нет_сбережений_нет_кредитов_pct) OVER (ORDER BY wave_order)
         AS prev_wave_pct,
     ROUND(
         нет_сбережений_нет_кредитов_pct
-        - LAG(нет_сбережений_нет_кредитов_pct) OVER (ORDER BY wave)
+        - LAG(нет_сбережений_нет_кредитов_pct) OVER (ORDER BY wave_order)
     , 1) AS change_pp
-FROM hse_savings_credits
-WHERE wave LIKE '%20%'
-ORDER BY wave;
+FROM (
+    SELECT
+        wave,
+        нет_сбережений_нет_кредитов_pct,
+        CASE wave
+            WHEN 'Июнь-июль 2023'             THEN 1
+            WHEN 'Сентябрь-ноябрь 2023'        THEN 2
+            WHEN 'Декабрь2023-Февраль2024'     THEN 3
+            WHEN 'Апрель-май 2024'             THEN 4
+            WHEN 'Октябрь-ноябрь 2024'         THEN 5
+            WHEN 'Апрель-май 2025'             THEN 6
+            WHEN 'Октябрь-ноябрь 2025'         THEN 7
+        END AS wave_order
+    FROM hse_savings_credits
+)
+ORDER BY wave_order;

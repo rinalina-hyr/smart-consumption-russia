@@ -268,7 +268,7 @@ g2 <- ggplot(ipu_age, aes(group, index_value, fill = highlight)) +
   scale_y_continuous(limits = c(-12, 6)) +
   labs(
     title = "Индекс потребительской уверенности по возрастам, Q1 2026",
-    subtitle = "Источник: Ромир. Красным выделен возрастной минимум",
+    subtitle = "Источник: Ромир. Группа 45–59 ≠ 45–54 у Chizhik, не сопоставляется напрямую.",
     x = NULL, y = "Индекс", fill = NULL
   ) +
   theme_minimal(base_size = 12) +
