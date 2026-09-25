@@ -5,17 +5,13 @@
 pacman::p_load(DBI, RSQLite, dplyr, tidyr, ggplot2, here, stringr, forcats)
 
 con <- dbConnect(SQLite(), here("data", "smart_consumption.db"))
-
 categories <- dbGetQuery(con, "SELECT * FROM stm_categories")
+categories_2022 <- dbGetQuery(con, "SELECT * FROM stm_categories_2022")
 motivation <- dbGetQuery(con, "SELECT * FROM stm_motivation")
 experience <- dbGetQuery(con, "SELECT * FROM stm_experience")
-
 dbDisconnect(con)
 
-
-# 1. Топ категорий СТМ
-
-
+# Топ категорий СТМ
 cats <- categories %>%
   filter(!is.na(share_pct_june_2026)) %>%
   mutate(
@@ -43,10 +39,56 @@ g1 <- ggplot(cats, aes(share_pct_june_2026, category_short)) +
 ggsave(here("visualizations", "H1_stm_categories.png"), g1,
        width = 9, height = 6, dpi = 150)
 
+# Сравнение с 2022 г. (Ромир, romir.ru/feed/romir-zafiksiroval-uvelichenie-doli-stm-na-rossiyskom-rynke-za-7-let)
+# Ранг топ-категорий устойчив (молочные/бакалея — топ-2 в обеих точках),
+# но уровни смешанные: большинство просело на -1..-4 п.п., гигиена выросла на +13.
+category_match <- tribble(
+  ~category_2022,          ~category_2026,                               ~match_note,
+  "Молочные продукты",     "Молочная/кисло-молочная продукция, сыр",     "прямое",
+  "Бакалея",                "Бакалея",                                    "прямое",
+  "Товары личной гигиены", "Средства гигиены",                           "прямое",
+  "Кондитерские изделия",  "Кондитерские изделия",                       "прямое",
+  "Хозтовары",              "Средства для уборки дома",                  "приблизительное"
+)
 
-# 2. Мотивация выбора СТМ
+comparison_2022_2026 <- category_match %>%
+  left_join(categories_2022 %>% select(category_2022 = category, share_2022 = share_pct),
+            by = "category_2022") %>%
+  left_join(categories %>% select(category_2026 = category, share_2026 = share_pct_june_2026),
+            by = "category_2026") %>%
+  mutate(delta_pp = share_2026 - share_2022)
 
+print(comparison_2022_2026 %>% select(category_2022, share_2022, share_2026, delta_pp))
 
+cmp_long <- comparison_2022_2026 %>%
+  mutate(category_2022 = fct_reorder(category_2022, share_2026)) %>%
+  select(category_2022, share_2022, share_2026) %>%
+  pivot_longer(c(share_2022, share_2026), names_to = "year", values_to = "value") %>%
+  mutate(year = ifelse(year == "share_2022", "2022", "2026"))
+
+g_cmp <- ggplot(cmp_long, aes(value, category_2022, fill = year)) +
+  geom_col(position = position_dodge(0.75), width = 0.7) +
+  geom_text(aes(label = sprintf("%d%%", value)),
+            position = position_dodge(0.75), hjust = -0.3, size = 3.8) +
+  scale_fill_manual(values = c("2022" = "lightblue", "2026" = "steelblue")) +
+  scale_x_continuous(limits = c(0, 45)) +
+  labs(
+    title = "Доля покупателей СТМ по категориям: 2022 vs 2026",
+    subtitle = "Сопоставимые категории, источник: Ромир",
+    x = "%", y = NULL, fill = NULL
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(
+    legend.position = "top",
+    panel.grid.major.y = element_blank(),
+    panel.grid.minor = element_blank(),
+    plot.title = element_text(face = "bold")
+  )
+
+ggsave(here("visualizations", "H1_stm_categories_2022_vs_2026.png"), g_cmp,
+       width = 9, height = 5, dpi = 150)
+
+# Мотивация выбора СТМ
 mot <- motivation %>%
   filter(!is.na(share_pct)) %>%
   mutate(
@@ -81,14 +123,7 @@ g2 <- ggplot(mot, aes(share_pct, factor, fill = type)) +
 ggsave(here("visualizations", "H1_stm_motivation.png"), g2,
        width = 9, height = 5, dpi = 150)
 
-
-# 3. Классификация: строгая и мягкая
-
-#
-# Мягкая включает спорные категории
-# (колбасы и мясные деликатесы, кондитерские изделия).
-# Строгая их исключает.
-
+# Классификация категорий: мягкая vs строгая
 top10 <- categories %>%
   filter(!is.na(share_pct_june_2026)) %>%
   mutate(
@@ -104,20 +139,13 @@ top10 <- categories %>%
     )
   )
 
-cat("Топ-10 категорий СТМ с двумя классификациями:\n")
-print(top10 %>% select(category, share_pct_june_2026, type_soft, type_strict))
-cat("\n")
-
 soft_n   <- sum(top10$type_soft == "Повседневные")
 strict_n <- sum(top10$type_strict == "Повседневные")
 
-cat(sprintf("Мягкая классификация:   %d из %d\n", soft_n, nrow(top10)))
-cat(sprintf("Строгая классификация:  %d из %d\n\n", strict_n, nrow(top10)))
+cat(sprintf("Мягкая: %d из %d, строгая: %d из %d\n",
+            soft_n, nrow(top10), strict_n, nrow(top10)))
 
-
-# 4. Динамика доли покупателей СТМ
-# Описательно.
-
+# Динамика доли покупателей СТМ по волнам 2026 г.
 trend <- experience %>%
   filter(!is.na(regular_or_sometimes_total_pct)) %>%
   filter(period != "Q1 2026") %>%
@@ -139,17 +167,6 @@ trend <- experience %>%
     period_label = factor(period_label,
                           levels = c("Январь", "Апрель (Q2)", "Май", "Июнь", "Июль"))
   )
-
-cat("Динамика по волнам 2026 г. (Q2 трактуется как апрель):\n")
-print(trend %>% select(period, month_num, regular_or_sometimes_total_pct))
-cat("\n")
-
-first_val <- trend$regular_or_sometimes_total_pct[trend$month_num == 1]
-last_val  <- trend$regular_or_sometimes_total_pct[trend$month_num == 7]
-
-cat(sprintf("Доля покупателей СТМ: %.0f%% (январь) → %.0f%% (июль).\n",
-            first_val, last_val))
-cat("Разница: +3 п.п. за полгода. Описательно.\n\n")
 
 g3 <- ggplot(trend, aes(month_num, regular_or_sometimes_total_pct)) +
   geom_line(color = "lightblue", linewidth = 1) +
@@ -175,15 +192,3 @@ g3 <- ggplot(trend, aes(month_num, regular_or_sometimes_total_pct)) +
 
 ggsave(here("visualizations", "H1_stm_trend.png"), g3,
        width = 8, height = 4.5, dpi = 150)
-
-
-# 5. Вывод
-
-
-cat(sprintf("    Мягкая классификация:   %d из %d — повседневные\n",
-            soft_n, nrow(top10)))
-cat(sprintf("    Строгая классификация:  %d из %d — повседневные\n",
-            strict_n, nrow(top10)))
-
-cat("Статус: описательное наблюдение.\n")
-cat("Различающий аргумент слабый.\n")
